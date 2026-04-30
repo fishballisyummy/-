@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>奶茶分店物料管理系統 - 同步版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+<script>
+    // 1. 在 <script> 最頂部加上：
+    const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+    // 2. 加上 helper：
+    async function syncToSheet(payload) {
+        if (APPS_SCRIPT_URL.includes("PASTE")) return;
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(payload)
+            });
+        } catch (e) { console.warn(e); }
+    }
+
+    // 資料結構初始化
+    let branches = JSON.parse(localStorage.getItem('branches')) || [
+        { id: 'b1', name: '大三巴店', status: '營業中', x: 45, y: 30 },
+        { id: 'b2', name: '氹仔店', status: '營業中', x: 55, y: 70 }
+    ];
+    let materials = JSON.parse(localStorage.getItem('materials')) || [
+        { id: 'm1', name: '全脂牛奶', unit: '升' },
+        { id: 'm2', name: '茶葉', unit: '公斤' },
+        { id: 'm3', name: '珍珠', unit: '公斤' }
+    ];
+    let logs = JSON.parse(localStorage.getItem('materials_logs')) || [];
+
+    // 3. 修正後的 saveData (加上 syncToSheet)
+    function saveData(newRecord) {
+        logs.push(newRecord);
+        localStorage.setItem('materials_logs', JSON.stringify(logs));
+        
+        // 【要做的事】 加上 syncToSheet
+        syncToSheet({ action: "create", record: newRecord });
+        
+        renderLogs();
+    }
+
+    // 4. 修改現有 record 的 function (加上 syncToSheet)
+    function toggleBranchStatus(id) {
+        const branch = branches.find(b => b.id === id);
+        if (branch) {
+            branch.status = branch.status === '營業中' ? '休息中' : '營業中';
+            localStorage.setItem('branches', JSON.stringify(branches));
+            
+            // 【要做的事】 加上 syncToSheet (update)
+            syncToSheet({ action: "update", id: branch.id, changes: { status: branch.status } });
+            
+            renderBranches();
+        }
+    }
+
+    // 模擬修改 Log (例如：按讚或標記已處理)
+    function toggleLogLike(id) {
+        const log = logs.find(l => l.id === id);
+        if (log) {
+            log.liked = !log.liked;
+            localStorage.setItem('materials_logs', JSON.stringify(logs));
+            
+            // 【要做的事】 加上 syncToSheet (update)
+            syncToSheet({ action: "update", id: log.id, changes: { liked: log.liked } });
+            
+            renderLogs();
+        }
+    }
+
+    // 暫不修改 loadData()
+    function loadData() {
+        console.log("Loading data from localStorage...");
+        renderBranches();
+        renderLogs();
+    }
+
+    // UI 渲染邏輯
+    function renderBranches() {
+        const container = document.getElementById('branches-list');
+        container.innerHTML = branches.map(b => `
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-2">
+                <div>
+                    <h3 class="font-bold">${b.name}</h3>
+                    <span class="text-xs ${b.status === '營業中' ? 'text-emerald-500' : 'text-rose-500'} font-bold">${b.status}</span>
+                </div>
+                <button onclick="toggleBranchStatus('${b.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg font-bold transition-all">
+                    切換狀態
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function renderLogs() {
+        const container = document.getElementById('logs-list');
+        container.innerHTML = logs.map(l => `
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-2">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-slate-400">${l.date}</p>
+                        <p class="font-bold">分店 ID: ${l.branchId}</p>
+                    </div>
+                    <button onclick="toggleLogLike('${l.id}')" class="text-rose-500">
+                        <i data-lucide="heart" class="${l.liked ? 'fill-current' : ''}"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    function handleFormSubmit(e) {
+        e.preventDefault();
+        const branchId = document.getElementById('branch-select').value;
+        const newRecord = {
+            id: 'log_' + Date.now(),
+            branchId: branchId,
+            date: new Date().toISOString().split('T')[0],
+            liked: false
+        };
+        saveData(newRecord);
+        e.target.reset();
+    }
+
+    window.onload = () => {
+        loadData();
+    }
+</script>
+
+<header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+            <i data-lucide="coffee"></i>
+        </div>
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tight">奶茶供應同步系統</h1>
+            <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Backend Sync Active</p>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-4xl mx-auto p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- 左側：錄入 -->
+    <div class="space-y-6">
+        <section class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xl">
+            <h2 class="text-lg font-black mb-4 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="text-slate-400"></i> 新增物料記錄
+            </h2>
+            <form id="usage-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">選擇分店</label>
+                    <select id="branch-select" class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none">
+                        <option value="b1">大三巴店</option>
+                        <option value="b2">氹仔店</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg hover:opacity-90 transition-all">
+                    儲存並同步
+                </button>
+            </form>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-black mb-4 flex items-center gap-2">
+                <i data-lucide="history" class="text-slate-400"></i> 最近記錄
+            </h2>
+            <div id="logs-list"></div>
+        </section>
+    </div>
+
+    <!-- 右側：分店管理 -->
+    <div class="space-y-6">
+        <section>
+            <h2 class="text-lg font-black mb-4 flex items-center gap-2">
+                <i data-lucide="map-pin" class="text-slate-400"></i> 分店列表
+            </h2>
+            <div id="branches-list"></div>
+        </section>
+    </div>
+</main>
+
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>
