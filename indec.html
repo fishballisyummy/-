@@ -3,196 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奶茶分店物料管理系統 - 同步版</title>
+    <title>奶茶分店物料管理系統 (Pure HTML)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-900 min-h-screen">
+<body class="bg-slate-100 min-h-screen text-slate-900 selection:bg-slate-900 selection:text-white">
 
-<script>
-    // 1. 在 <script> 最頂部加上：
-    const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
-
-    // 2. 加上 helper：
-    async function syncToSheet(payload) {
-        if (APPS_SCRIPT_URL.includes("PASTE")) return;
-        try {
-            await fetch(APPS_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(payload)
-            });
-        } catch (e) { console.warn(e); }
-    }
-
-    // 資料結構初始化
-    let branches = JSON.parse(localStorage.getItem('branches')) || [
-        { id: 'b1', name: '大三巴店', status: '營業中', x: 45, y: 30 },
-        { id: 'b2', name: '氹仔店', status: '營業中', x: 55, y: 70 }
-    ];
-    let materials = JSON.parse(localStorage.getItem('materials')) || [
-        { id: 'm1', name: '全脂牛奶', unit: '升' },
-        { id: 'm2', name: '茶葉', unit: '公斤' },
-        { id: 'm3', name: '珍珠', unit: '公斤' }
-    ];
-    let logs = JSON.parse(localStorage.getItem('materials_logs')) || [];
-
-    // 3. 修正後的 saveData (加上 syncToSheet)
-    function saveData(newRecord) {
-        logs.push(newRecord);
-        localStorage.setItem('materials_logs', JSON.stringify(logs));
-        
-        // 【要做的事】 加上 syncToSheet
-        syncToSheet({ action: "create", record: newRecord });
-        
-        renderLogs();
-    }
-
-    // 4. 修改現有 record 的 function (加上 syncToSheet)
-    function toggleBranchStatus(id) {
-        const branch = branches.find(b => b.id === id);
-        if (branch) {
-            branch.status = branch.status === '營業中' ? '休息中' : '營業中';
-            localStorage.setItem('branches', JSON.stringify(branches));
-            
-            // 【要做的事】 加上 syncToSheet (update)
-            syncToSheet({ action: "update", id: branch.id, changes: { status: branch.status } });
-            
-            renderBranches();
-        }
-    }
-
-    // 模擬修改 Log (例如：按讚或標記已處理)
-    function toggleLogLike(id) {
-        const log = logs.find(l => l.id === id);
-        if (log) {
-            log.liked = !log.liked;
-            localStorage.setItem('materials_logs', JSON.stringify(logs));
-            
-            // 【要做的事】 加上 syncToSheet (update)
-            syncToSheet({ action: "update", id: log.id, changes: { liked: log.liked } });
-            
-            renderLogs();
-        }
-    }
-
-    // 暫不修改 loadData()
-    function loadData() {
-        console.log("Loading data from localStorage...");
-        renderBranches();
-        renderLogs();
-    }
-
-    // UI 渲染邏輯
-    function renderBranches() {
-        const container = document.getElementById('branches-list');
-        container.innerHTML = branches.map(b => `
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-2">
-                <div>
-                    <h3 class="font-bold">${b.name}</h3>
-                    <span class="text-xs ${b.status === '營業中' ? 'text-emerald-500' : 'text-rose-500'} font-bold">${b.status}</span>
-                </div>
-                <button onclick="toggleBranchStatus('${b.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg font-bold transition-all">
-                    切換狀態
-                </button>
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-inner">
+                <i data-lucide="coffee"></i>
             </div>
-        `).join('');
-    }
+            <div>
+                <h1 class="text-xl font-black text-slate-900 tracking-tight">奶茶分店物料管理系統</h1>
+                <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Local Storage Edition</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1 bg-amber-50 rounded-full border border-amber-100">
+            <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+            <span class="text-xs font-bold text-amber-700">本地存儲模式</span>
+        </div>
+    </header>
 
-    function renderLogs() {
-        const container = document.getElementById('logs-list');
-        container.innerHTML = logs.map(l => `
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-2">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-xs text-slate-400">${l.date}</p>
-                        <p class="font-bold">分店 ID: ${l.branchId}</p>
+    <main class="max-w-6xl mx-auto p-6 md:p-10 space-y-8">
+        
+        <!-- Stats Summary -->
+        <div id="stats-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                        <i data-lucide="list"></i>
                     </div>
-                    <button onclick="toggleLogLike('${l.id}')" class="text-rose-500">
-                        <i data-lucide="heart" class="${l.liked ? 'fill-current' : ''}"></i>
-                    </button>
+                    <span id="stat-total" class="text-2xl font-black text-slate-900">0</span>
                 </div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">總記錄次數</h3>
             </div>
-        `).join('');
-        lucide.createIcons();
-    }
-
-    function handleFormSubmit(e) {
-        e.preventDefault();
-        const branchId = document.getElementById('branch-select').value;
-        const newRecord = {
-            id: 'log_' + Date.now(),
-            branchId: branchId,
-            date: new Date().toISOString().split('T')[0],
-            liked: false
-        };
-        saveData(newRecord);
-        e.target.reset();
-    }
-
-    window.onload = () => {
-        loadData();
-    }
-</script>
-
-<header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-30 shadow-sm">
-    <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
-            <i data-lucide="coffee"></i>
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <i data-lucide="check-circle"></i>
+                    </div>
+                    <span id="stat-active" class="text-2xl font-black text-slate-900">0</span>
+                </div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">活躍項目</h3>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-slate-50 text-slate-600 rounded-lg">
+                        <i data-lucide="archive"></i>
+                    </div>
+                    <span id="stat-archived" class="text-2xl font-black text-slate-900">0</span>
+                </div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">歸檔項目</h3>
+            </div>
         </div>
-        <div>
-            <h1 class="text-xl font-black text-slate-900 tracking-tight">奶茶供應同步系統</h1>
-            <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Backend Sync Active</p>
-        </div>
-    </div>
-</header>
 
-<main class="max-w-4xl mx-auto p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-    <!-- 左側：錄入 -->
-    <div class="space-y-6">
-        <section class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xl">
-            <h2 class="text-lg font-black mb-4 flex items-center gap-2">
-                <i data-lucide="plus-circle" class="text-slate-400"></i> 新增物料記錄
-            </h2>
-            <form id="usage-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">選擇分店</label>
-                    <select id="branch-select" class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none">
-                        <option value="b1">大三巴店</option>
-                        <option value="b2">氹仔店</option>
+        <!-- Input Form -->
+        <section class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="p-2 bg-slate-100 rounded-lg text-slate-600">
+                    <i data-lucide="plus"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-lg">新增物料記錄</h3>
+            </div>
+            <form id="record-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase tracking-widest font-black text-slate-400">分店名稱</label>
+                    <input type="text" id="branchName" required placeholder="如：塔石旗艦店" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase tracking-widest font-black text-slate-400">物料項目</label>
+                    <select id="materialName" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all appearance-none">
+                        <option value="全脂牛奶">全脂牛奶</option>
+                        <option value="茶葉">茶葉</option>
+                        <option value="珍珠">珍珠</option>
+                        <option value="蔗糖">蔗糖</option>
+                        <option value="飲料杯">飲料杯</option>
+                        <option value="吸管">吸管</option>
                     </select>
                 </div>
-                <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg hover:opacity-90 transition-all">
-                    儲存並同步
-                </button>
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase tracking-widest font-black text-slate-400">數量</label>
+                    <div class="flex">
+                        <input type="number" id="amount" required step="0.1" placeholder="0.0" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                        <input type="text" id="unit" required placeholder="單位" class="w-20 px-4 py-3 bg-slate-100 border border-slate-200 border-l-0 rounded-r-xl focus:outline-none text-slate-500 text-sm">
+                    </div>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-slate-200">
+                        <i data-lucide="save" size="18"></i> 儲存紀錄
+                    </button>
+                </div>
             </form>
         </section>
 
-        <section>
-            <h2 class="text-lg font-black mb-4 flex items-center gap-2">
-                <i data-lucide="history" class="text-slate-400"></i> 最近記錄
-            </h2>
-            <div id="logs-list"></div>
-        </section>
-    </div>
+        <!-- List & Filter Section -->
+        <section class="space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-slate-100 rounded-lg text-slate-600">
+                        <i data-lucide="history"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-lg">物料使用紀錄</h3>
+                </div>
+                <div id="filter-buttons" class="flex p-1 bg-slate-200 rounded-xl">
+                    <button data-filter="all" class="px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-sm">全部</button>
+                    <button data-filter="active" class="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-700">活躍中</button>
+                    <button data-filter="archived" class="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-700">已歸檔</button>
+                </div>
+            </div>
 
-    <!-- 右側：分店管理 -->
-    <div class="space-y-6">
-        <section>
-            <h2 class="text-lg font-black mb-4 flex items-center gap-2">
-                <i data-lucide="map-pin" class="text-slate-400"></i> 分店列表
-            </h2>
-            <div id="branches-list"></div>
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px]">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-[10px] uppercase tracking-wider font-extrabold text-slate-400 bg-slate-50/50">
+                            <th class="py-4 px-6">ID / 創建時間</th>
+                            <th class="py-4 px-6">分店</th>
+                            <th class="py-4 px-6">物料</th>
+                            <th class="py-4 px-6 text-right">數量</th>
+                            <th class="py-4 px-6">狀態</th>
+                            <th class="py-4 px-6 text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-list" class="divide-y divide-slate-50">
+                        <!-- List items will be injected here -->
+                    </tbody>
+                </table>
+                <div id="empty-state" class="hidden p-20 text-center flex flex-col items-center">
+                    <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-200">
+                        <i data-lucide="inbox" size="32"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm font-medium">目前沒有符合條件的紀錄</p>
+                </div>
+            </div>
         </section>
-    </div>
-</main>
+    </main>
 
-<script>
-    lucide.createIcons();
-</script>
+    <footer class="p-8 border-t border-slate-200 text-center text-slate-400 text-xs mt-auto">
+        &copy; 2026 奶茶分店物料管理系統 • Macau Intelligence Supply Network • Pure HTML Version
+    </footer>
+
+    <script>
+        // =============================================
+        // 請將下面這行換成你的 Apps Script Web App URL
+        // =============================================
+        const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+        // 同步資料到 Google Sheet 的 helper
+        function syncToSheet(payload) {
+            if (APPS_SCRIPT_URL === "PASTE_YOUR_APPS_SCRIPT_URL_HERE" || !APPS_SCRIPT_URL) {
+                console.warn("APPS_SCRIPT_URL not set, skipping sync");
+                return;
+            }
+            fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => console.log('Sync success:', data))
+            .catch(err => console.warn('Sync failed:', err));
+        }
+
+        // Constants
+        const STORAGE_KEY = "records";
+        let currentFilter = "all";
+
+        // Pre-defined units for materials
+        const materialUnits = {
+            "全脂牛奶": "升",
+            "茶葉": "公斤",
+            "珍珠": "公斤",
+            "蔗糖": "公斤",
+            "飲料杯": "個",
+            "吸管": "支"
+        };
+
+        // Initialize UI
+        function init() {
+            lucide.createIcons();
+            
+            // Sync unit with material selection
+            const materialSelect = document.getElementById('materialName');
+            const unitInput = document.getElementById('unit');
+            
+            materialSelect.addEventListener('change', () => {
+                unitInput.value = materialUnits[materialSelect.value] || "";
+            });
+            unitInput.value = materialUnits[materialSelect.value];
+
+            // Form Submit
+            document.getElementById('record-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newRecord = {
+                    id: Date.now() + "_" + Math.random().toString(36).slice(2,6),
+                    createdAt: new Date().toISOString(),
+                    status: "active",
+                    branchName: document.getElementById('branchName').value,
+                    materialName: document.getElementById('materialName').value,
+                    amount: parseFloat(document.getElementById('amount').value),
+                    unit: document.getElementById('unit').value
+                };
+                saveData(newRecord);
+                document.getElementById('record-form').reset();
+                unitInput.value = materialUnits[materialSelect.value];
+                renderList();
+                // 同步新增到 Google Sheet
+                syncToSheet({ action: "create", record: newRecord });
+            });
+
+            // Filter buttons
+            document.querySelectorAll('#filter-buttons button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // UI Update
+                    document.querySelectorAll('#filter-buttons button').forEach(b => {
+                        b.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+                        b.classList.add('text-slate-500');
+                    });
+                    btn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+                    btn.classList.remove('text-slate-500');
+                    
+                    currentFilter = btn.dataset.filter;
+                    renderList();
+                });
+            });
+
+            renderList();
+        }
+
+        // Logic Functions (Strictly required)
+        
+        function loadData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveData(newRecord) {
+            const records = loadData();
+            records.unshift(newRecord); // Add to top
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        }
+
+        function renderList() {
+            const records = loadData();
+            const listElement = document.getElementById('records-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            // Filter
+            const filteredRecords = records.filter(r => {
+                if (currentFilter === "all") return true;
+                return r.status === currentFilter;
+            });
+
+            // Stats update
+            document.getElementById('stat-total').textContent = records.length;
+            document.getElementById('stat-active').textContent = records.filter(r => r.status === 'active').length;
+            document.getElementById('stat-archived').textContent = records.filter(r => r.status === 'archived').length;
+
+            if (filteredRecords.length === 0) {
+                listElement.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            listElement.innerHTML = filteredRecords.map(record => `
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="py-4 px-6">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-mono text-slate-400 font-bold">#${record.id.split('_')[1]}</span>
+                            <span class="text-xs text-slate-600 font-medium">${new Date(record.createdAt).toLocaleString('zh-HK', { hour12: false })}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-sm font-bold text-slate-800">${record.branchName}</td>
+                    <td class="py-4 px-6 text-sm text-slate-600">
+                        <span class="px-2 py-1 bg-slate-100 rounded-md text-[10px] font-black uppercase text-slate-500">${record.materialName}</span>
+                    </td>
+                    <td class="py-4 px-6 text-right">
+                        <span class="text-sm font-black text-slate-900">${record.amount.toFixed(1)}</span>
+                        <span class="text-[10px] text-slate-400 font-bold ml-1">${record.unit}</span>
+                    </td>
+                    <td class="py-4 px-6">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            record.status === 'active' 
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                            : 'bg-slate-100 text-slate-400 border border-slate-200'
+                        }">
+                            <span class="w-1.5 h-1.5 rounded-full ${record.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                            ${record.status === 'active' ? '活躍' : '已歸檔'}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="toggleStatus('${record.id}')" title="${record.status === 'active' ? '歸檔' : '啟用'}" class="p-2 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-slate-900 transition-all">
+                                <i data-lucide="${record.status === 'active' ? 'archive' : 'refresh-cw'}" size="14"></i>
+                            </button>
+                            <button onclick="deleteRecord('${record.id}')" title="刪除" class="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all">
+                                <i data-lucide="trash-2" size="14"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        // Action Handlers
+        function toggleStatus(id) {
+            const records = loadData();
+            const index = records.findIndex(r => r.id === id);
+            if (index !== -1) {
+                records[index].status = records[index].status === 'active' ? 'archived' : 'active';
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+                // 同步狀態變更到 Google Sheet
+                syncToSheet({ action: "update", id: id, changes: { status: records[index].status } });
+                renderList();
+            }
+        }
+
+        function deleteRecord(id) {
+            if (confirm("確定要永久刪除此紀錄嗎？")) {
+                const records = loadData();
+                const filtered = records.filter(r => r.id !== id);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+                // 同步刪除到 Google Sheet
+                syncToSheet({ action: "delete", id: id });
+                renderList();
+            }
+        }
+
+        // Start
+        window.addEventListener('load', init);
+    </script>
 </body>
 </html>
